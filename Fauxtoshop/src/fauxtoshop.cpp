@@ -29,9 +29,11 @@ static void     getMouseClickLocation(int &row, int &col);
 //Custom fn declarations
 static void 	fauxtoShopWork(GWindow &gw, GBufferedImage &img);
 static void 	scatter(GWindow &gw, GBufferedImage &img);
-static bool	 	CanApplyEffect(GBufferedImage &img, int nRow, int nCol);
+static bool	 	canApplyEffect(GBufferedImage &img, int nRow, int nCol);
 static int   	getRandomOffset(int currentIndex, int radius, int maxIndex);
-
+static int 		getDifference(int pixel1, int pixel2);
+static int 		isEdgePixel(GBufferedImage &img, Grid<int> original, int threshold, int r, int c);
+static void 	edgeDetection(GWindow &gw, GBufferedImage &img);
 /* STARTER CODE FUNCTION - DO NOT EDIT
  *
  * This main simply declares a GWindow and a GBufferedImage for use
@@ -100,7 +102,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
                 scatter(gw, img);
                 break;
             case 2:
-            // Code for option 2
+                edgeDetection(gw, img);
                 break;
             case 3:
             // Code for option 3
@@ -114,6 +116,8 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
         }
     }
 }
+
+//---------------------- Scatter  Start-----------------------//
 
 static void scatter(GWindow &gw, GBufferedImage &img){
     string input = getLine("Enter degree of scatter [1-100]: ");
@@ -131,7 +135,7 @@ static void scatter(GWindow &gw, GBufferedImage &img){
                 nrow = i + getRandomOffset(i, radius, gridOriginal.nRows - 1);
                 ncol = j + getRandomOffset(j, radius, gridOriginal.nCols - 1);
 
-                validPixel= CanApplyEffect(scatteredImg, nrow, ncol);
+                validPixel= canApplyEffect(scatteredImg, nrow, ncol);
                 if (validPixel){
                     break;
                 }
@@ -162,7 +166,7 @@ static int getRandomOffset(int currentIndex, int radius, int maxIndex) {
     return minOffset + (rand() % (maxOffset - minOffset + 1));
 }
 
-static bool CanApplyEffect(GBufferedImage &img, int nRow, int nCol){
+static bool canApplyEffect(GBufferedImage &img, int nRow, int nCol){
     if (nRow < 0 || nRow > (img.getWidth()-1)){
         cout << "nRow out of bounds: " << nRow << endl;
         return false;
@@ -175,8 +179,86 @@ static bool CanApplyEffect(GBufferedImage &img, int nRow, int nCol){
 }
 
 
+//---------------------- Scatter  End-----------------------//
 
+//---------------------- Edge Detection Start-----------------------//
 
+static void edgeDetection(GWindow &gw, GBufferedImage &img){
+    string input = getLine("Enter threshold for edge detection: ");
+    int threshold = stoi(input);
+
+    Grid<int> gridOriginal = img.toGrid();
+    Grid<int> gridEdged(gridOriginal.nRows, gridOriginal.nCols);
+    GBufferedImage edgedImg(gridEdged.nRows, gridEdged.nCols);
+
+    for(int i=0;i<gridEdged.nRows;i++){
+        for(int j=0;j<gridEdged.nCols;j++){
+            if(isEdgePixel(img, gridOriginal, threshold, i, j)){
+                gridEdged[i][j]=BLACK;
+            }else{
+                gridEdged[i][j]=WHITE;
+            }
+        }
+    }
+    gw.clear();
+    edgedImg.fromGrid(gridEdged);
+    gw.add(&edgedImg, 0, 0);
+
+    input = getLine("Enter filename to save image (or blank to skip saving): ");
+    if (input.length() == 0){
+        gw.clear();
+        cout << "" << endl;
+        return;
+    }
+    saveImageToFilename(edgedImg, input);
+    gw.clear();
+    cout << "" << endl;
+    return;
+}
+
+static int isEdgePixel(GBufferedImage &img, Grid<int> original, int threshold, int r, int c){
+    if(!img.inBounds(r, c)){
+        return false;
+    }
+    int oPixel = original[r][c];
+    int directions[8][2] = {
+        {-1, -1}, {-1, 0}, {-1, 1}, // Top-left, top, top-right
+        { 0, -1},         { 0, 1}, // Left, right
+        { 1, -1}, { 1, 0}, { 1, 1}  // Bottom-left, bottom, bottom-right
+    };
+
+    for (int i = 0; i < 8; i++){
+        int r2 = r + directions[i][0];
+        int c2 = c + directions[i][1];
+        if(r2<0||r2>=original.nRows){
+            continue;
+        }
+        if(c2<0||c2>=original.nCols){
+            continue;
+        }
+        if(!img.inBounds(r2, c2)){
+            continue;
+        }
+        int neighbour = original[r2][c2];
+        int diff = getDifference(oPixel, neighbour);
+        if (diff > threshold) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static int getDifference(int pixel1, int pixel2){
+    int p1r, p1g, p1b, p2r, p2g, p2b;
+    GBufferedImage::getRedGreenBlue(pixel1, p1r, p1g, p1b);
+    GBufferedImage::getRedGreenBlue(pixel2, p2r, p2g, p2b);
+    int rDiff = abs(p1r-p2r);
+    int gDiff = abs(p1g-p2g);
+    int bDiff = abs(p1b-p2b);
+    int maxDiff = max({rDiff, gDiff, bDiff});
+    return maxDiff;
+}
 
 /* STARTER CODE HELPER FUNCTION - DO NOT EDIT
  *
