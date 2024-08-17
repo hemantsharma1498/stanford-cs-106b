@@ -3,6 +3,8 @@
 // TODO: rewrite this comment
 
 #include <iostream>
+#include <string>
+#include <random>
 #include "console.h"
 #include "gwindow.h"
 #include "grid.h"
@@ -23,6 +25,12 @@ static void     doFauxtoshop(GWindow &gw, GBufferedImage &img);
 static bool     openImageFromFilename(GBufferedImage& img, string filename);
 static bool 	saveImageToFilename(const GBufferedImage &img, string filename);
 static void     getMouseClickLocation(int &row, int &col);
+
+//Custom fn declarations
+static void 	fauxtoShopWork(GWindow &gw, GBufferedImage &img);
+static void 	scatter(GWindow &gw, GBufferedImage &img);
+static bool	 	CanApplyEffect(GBufferedImage &img, int nRow, int nCol);
+static int   	getRandomOffset(int currentIndex, int radius, int maxIndex);
 
 /* STARTER CODE FUNCTION - DO NOT EDIT
  *
@@ -50,13 +58,124 @@ int main() {
  */
 static void doFauxtoshop(GWindow &gw, GBufferedImage &img) {
     cout << "Welcome to Fauxtoshop!" << endl;
-    openImageFromFilename(img, "kitten.jpg");
-    gw.setCanvasSize(img.getWidth(), img.getHeight());
-    gw.add(&img,0,0);
+    fauxtoShopWork(gw, img);
     int row, col;
     getMouseClickLocation(row, col);
     gw.clear();
 }
+
+static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
+    int option = -1;
+    while (true){
+        string filename = getLine("Enter name of image file to open (or blank to quit): ");
+        if (filename.empty()){
+            return;
+        }
+
+        // Check if the filename is entered with an extension, add extension if not found
+        int extensionLocation = filename.find(".jpg");
+        if (extensionLocation == -1){
+            filename +=".jpg";
+        }
+        cout << "Opening image file, may take a minute..." << endl;
+        openImageFromFilename(img, filename);
+        gw.setCanvasSize(img.getWidth(), img.getHeight());
+        gw.add(&img,0,0);
+
+        cout << "Which image filter would you like to apply?" << endl;
+        string input = getLine("\t1 - Scatter\n"
+                            "\t2 - Edge detection\n"
+                            "\t3 - \"Green screen\" with another image\n"
+                            "\t4 - Compare image with another image\n");
+        try {
+            option = stoi(input);
+        }
+        catch(...){
+            cout << "Enter a valid number" << endl;
+            continue;
+        }
+
+        switch (option) {
+            case 1:
+                scatter(gw, img);
+                break;
+            case 2:
+            // Code for option 2
+                break;
+            case 3:
+            // Code for option 3
+                break;
+            case 4:
+            // Code for option 4
+                break;
+            default:
+                cout << "Please enter a valid option" << endl;
+                break;
+        }
+    }
+}
+
+static void scatter(GWindow &gw, GBufferedImage &img){
+    string input = getLine("Enter degree of scatter [1-100]: ");
+    int radius = stoi(input);
+
+    Grid<int> gridOriginal = img.toGrid();
+    Grid<int> gridScattered(gridOriginal.nRows, gridOriginal.nCols);
+    GBufferedImage scatteredImg(gridScattered.nRows, gridScattered.nCols);
+    for(int i=0;i<gridScattered.nRows;i++){
+        for(int j=0;j<gridScattered.nCols;j++){
+            bool validPixel=false;
+            int nrow, ncol;
+            while (!validPixel){
+                // Calculate new row and col with both positive and negative offsets
+                nrow = i + getRandomOffset(i, radius, gridOriginal.nRows - 1);
+                ncol = j + getRandomOffset(j, radius, gridOriginal.nCols - 1);
+
+                validPixel= CanApplyEffect(scatteredImg, nrow, ncol);
+                if (validPixel){
+                    break;
+                }
+            }
+            gridScattered[i][j]=gridOriginal[nrow][ncol];
+        }
+    }
+    gw.clear();
+    scatteredImg.fromGrid(gridScattered);
+    gw.add(&scatteredImg, 0, 0);
+
+    input = getLine("Enter filename to save image (or blank to skip saving): ");
+    if (input.length() == 0){
+        gw.clear();
+        cout << "" << endl;
+        return;
+    }
+    saveImageToFilename(scatteredImg, input);
+    gw.clear();
+    cout << "" << endl;
+    return;
+
+}
+
+static int getRandomOffset(int currentIndex, int radius, int maxIndex) {
+    int minOffset = -std::min(currentIndex, radius); // How much we can move up/left
+    int maxOffset = std::min(radius, maxIndex - currentIndex); // How much we can move down/right
+    return minOffset + (rand() % (maxOffset - minOffset + 1));
+}
+
+static bool CanApplyEffect(GBufferedImage &img, int nRow, int nCol){
+    if (nRow < 0 || nRow > (img.getWidth()-1)){
+        cout << "nRow out of bounds: " << nRow << endl;
+        return false;
+    }
+    if (nCol < 0 || nCol > (img.getHeight()-1)){
+        cout << "nCol out of bounds: " << nCol << endl;
+        return false;
+    }
+    return true;
+}
+
+
+
 
 
 /* STARTER CODE HELPER FUNCTION - DO NOT EDIT
