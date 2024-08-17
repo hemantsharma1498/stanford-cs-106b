@@ -259,6 +259,7 @@ static int getDifference(int pixel1, int pixel2){
     int maxDiff = max({rDiff, gDiff, bDiff});
     return maxDiff;
 }
+//---------------------- Edge Detection End-----------------------//
 
 /* STARTER CODE HELPER FUNCTION - DO NOT EDIT
  *
