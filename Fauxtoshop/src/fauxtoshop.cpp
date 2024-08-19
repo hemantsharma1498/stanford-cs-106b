@@ -34,6 +34,10 @@ static int   	getRandomOffset(int currentIndex, int radius, int maxIndex);
 static int 		getDifference(int pixel1, int pixel2);
 static int 		isEdgePixel(GBufferedImage &img, Grid<int> original, int threshold, int r, int c);
 static void 	edgeDetection(GWindow &gw, GBufferedImage &img);
+static void		greenScreen(GWindow &gw, GBufferedImage &img);
+static void 	splitString(string input, int &row, int &col);
+static bool 	greenScreenDiff(int pixel, int threshold);
+
 /* STARTER CODE FUNCTION - DO NOT EDIT
  *
  * This main simply declares a GWindow and a GBufferedImage for use
@@ -71,7 +75,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
     while (true){
         string filename = getLine("Enter name of image file to open (or blank to quit): ");
         if (filename.empty()){
-            return;
+            break;
         }
 
         // Check if the filename is entered with an extension, add extension if not found
@@ -89,6 +93,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
                             "\t2 - Edge detection\n"
                             "\t3 - \"Green screen\" with another image\n"
                             "\t4 - Compare image with another image\n");
+        cout << "Your choice: " << input << endl;
         try {
             option = stoi(input);
         }
@@ -105,7 +110,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
                 edgeDetection(gw, img);
                 break;
             case 3:
-            // Code for option 3
+                greenScreen(gw, img);
                 break;
             case 4:
             // Code for option 4
@@ -115,6 +120,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
                 break;
         }
     }
+    return;
 }
 
 //---------------------- Scatter  Start-----------------------//
@@ -259,7 +265,103 @@ static int getDifference(int pixel1, int pixel2){
     int maxDiff = max({rDiff, gDiff, bDiff});
     return maxDiff;
 }
-//---------------------- Edge Detection End-----------------------//
+//---------------------- Edge Detection End -----------------------//
+
+//---------------------- Green Screen Start -----------------------//
+static void greenScreen(GWindow &gw, GBufferedImage &bg){
+    cout << "Now choose another file to add to your background image." << endl;
+
+    //@TODO Add bit to persist prompt till proper filename is given
+    string input = getLine("Enter name of image file to open: ");
+    GBufferedImage sticker;
+    GBufferedImage finalImg;
+    // Check if the filename is entered with an extension, add extension if not found
+    int extensionLocation = input.find(".jpg");
+    if (extensionLocation == -1){
+        input +=".jpg";
+    }
+    cout << "Opening image file, may take a minute..." << endl;
+    openImageFromFilename(sticker, input);
+
+    Grid<int> stickerGrid = sticker.toGrid();
+    Grid<int> bgGrid = bg.toGrid();
+
+    input = getLine("Now choose a tolerance threshold: ");
+    int threshold=stoi(input);
+
+    int row = -1, col = -1;
+    while (row < 0 && col < 0){
+        input = getLine("Enter location to place image as \"(row,col)\" (or blank to use mouse): ");
+        if(input.length() == 0){
+            getMouseClickLocation(row, col);
+        }else{
+            splitString(input, row, col);
+        }
+        if (row >= 0 && col >= 0){
+            break;
+        }
+    }
+
+    int sgI=0, sgJ=0;
+    for(int i=row;i<bgGrid.nRows;i++){
+        sgJ=0;
+        for(int j=col;j<bgGrid.nCols;j++){
+            try{
+                if(greenScreenDiff(stickerGrid[sgI][sgJ], threshold)){
+                    bgGrid[i][j]=stickerGrid[sgI][sgJ];
+                }
+                else{
+                    stickerGrid[sgI][sgJ]=bgGrid[i][j];
+                }
+            }catch(...){
+
+            }
+            sgJ++;
+        }
+        sgI++;
+    }
+
+    gw.clear();
+    finalImg.fromGrid(bgGrid);
+    gw.add(&finalImg, 0, 0);
+
+    input = getLine("Enter filename to save image (or blank to skip saving): ");
+    if (input.length() == 0){
+        gw.clear();
+        cout << "" << endl;
+        return;
+    }
+    saveImageToFilename(finalImg, input);
+    gw.clear();
+    cout << "" << endl;
+    return;
+}
+
+
+static void splitString(string input, int &row, int &col){
+    string temp;
+    for(int i=0;i<input.length();i++){
+        if(input[i]==','){
+            row = stoi(temp);
+            temp="";
+            continue;
+        }
+        temp+=input[i];
+    }
+    col = stoi(temp);
+}
+
+static bool greenScreenDiff(int pixel, int threshold){
+    int p1r, p1g, p1b;
+    GBufferedImage::getRedGreenBlue(pixel, p1r, p1g, p1b);
+    int rDiff = abs(p1r-0);
+    int gDiff = abs(p1g-255);
+    int bDiff = abs(p1b-0);
+    int maxDiff = max({rDiff, gDiff, bDiff});
+    return maxDiff > threshold ? true : false;
+}
+
+
 
 /* STARTER CODE HELPER FUNCTION - DO NOT EDIT
  *
