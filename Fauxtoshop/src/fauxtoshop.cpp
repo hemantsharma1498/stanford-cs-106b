@@ -37,6 +37,7 @@ static void 	edgeDetection(GWindow &gw, GBufferedImage &img);
 static void		greenScreen(GWindow &gw, GBufferedImage &img);
 static void 	splitString(string input, int &row, int &col);
 static bool 	greenScreenDiff(int pixel, int threshold);
+static void 	compareImages(GWindow &gw, GBufferedImage &img1);
 
 /* STARTER CODE FUNCTION - DO NOT EDIT
  *
@@ -113,7 +114,7 @@ static void fauxtoShopWork(GWindow &gw, GBufferedImage &img){
                 greenScreen(gw, img);
                 break;
             case 4:
-            // Code for option 4
+                compareImages(gw, img);
                 break;
             default:
                 cout << "Please enter a valid option" << endl;
@@ -359,6 +360,34 @@ static bool greenScreenDiff(int pixel, int threshold){
     int bDiff = abs(p1b-0);
     int maxDiff = max({rDiff, gDiff, bDiff});
     return maxDiff > threshold ? true : false;
+}
+
+//---------------------- Green Screen End -----------------------//
+
+
+//---------------------- Compare Images Start -----------------------//
+
+static void compareImages(GWindow &gw, GBufferedImage &img1){
+    cout << "Now choose another file to compare to." << endl;
+
+    //@TODO Add bit to persist prompt till proper filename is given
+    string input = getLine("Enter name of image file to open: ");
+    GBufferedImage img2;
+    // Check if the filename is entered with an extension, add extension if not found
+    int extensionLocation = input.find(".jpg");
+    if (extensionLocation == -1){
+        input +=".jpg";
+    }
+    cout << "Opening image file, may take a minute..." << endl;
+    openImageFromFilename(img2, input);
+
+    int diff = img1.countDiffPixels(img2);
+    if(diff > 0) {
+        cout << "These images differ in " << diff << " pixel locations!" << endl;
+    }else{
+        cout << "These images are the same!" << endl;
+    }
+    return;
 }
 
 
