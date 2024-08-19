@@ -295,6 +295,7 @@ static void greenScreen(GWindow &gw, GBufferedImage &bg){
         input = getLine("Enter location to place image as \"(row,col)\" (or blank to use mouse): ");
         if(input.length() == 0){
             getMouseClickLocation(row, col);
+            cout << "You chose (" << row << ", " << col << ")"
         }else{
             splitString(input, row, col);
         }
